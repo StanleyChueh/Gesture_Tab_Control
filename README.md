@@ -15,6 +15,17 @@ mkdir Gesture_Tab_Control
 cd Gesture_Tab_Control
 git clone https://github.com/StanleyChueh/Gesture_Tab_Control.git
 ```
+## Open Terminal
+Terminal 1:
+```
+cd Gesture_Tab_Control/Gesture_Tab_Control
+python3 gesture_control.py 
+```
+Terminal 2:
+```
+cd Gesture_Tab_Control/Gesture_Tab_Control
+python3 websocket_server.py
+```
 DEMO:
 
 ## Support
