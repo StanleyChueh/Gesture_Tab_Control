@@ -61,6 +61,21 @@ ws.onmessage = function(event) {
                 }
             });
         });
+    } else if (event.data === 'close_tab') {
+        chrome.tabs.query({currentWindow: true, active: true}, function(activeTabs) {
+            if (activeTabs.length === 0) {
+                console.error('No active tab found.');
+                return;
+            }
+            let activeTab = activeTabs[0];
+            chrome.tabs.remove(activeTab.id, function() {
+                if (chrome.runtime.lastError) {
+                    console.error('Failed to close tab: ', chrome.runtime.lastError);
+                } else {
+                    console.log('Tab closed successfully.');
+                }
+            });
+        });
     }
 };
 
@@ -81,3 +96,4 @@ ws.onclose = function() {
 ws.onerror = function(error) {
     console.log(`WebSocket error: ${error}`);
 };
+

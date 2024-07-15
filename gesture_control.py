@@ -14,11 +14,14 @@ ws_url = "ws://localhost:8000"
 ws = None  # 全局变量来存储WebSocket连接
 
 # 滑动手势检测阈值
-SLIDE_THRESHOLD = 0.3  # 调整这个值来改变滑动敏感度 0.3
-STABILITY_FRAMES = 10  # 需要在多帧内持续检测到滑动手势 5
+SLIDE_THRESHOLD_X = 0.4  # 左右滑动的阈值
+SLIDE_THRESHOLD_Y = 0.35  # 向上滑动的阈值，调整这个值来改变滑动敏感度
+STABILITY_FRAMES = 10  # 需要在多帧内持续检测到滑动手势，调整这个值以改变稳定性要求
+GESTURE_INTERVAL = 2.5  # 手勢之間的最小間隔時間（秒）
 
 # 滑动手势计数器
-slide_count = 0
+slide_count_x = 0
+slide_count_y = 0
 last_direction = None
 last_slide_time = 0
 
@@ -73,24 +76,24 @@ while cap.isOpened():
             y_coords = [landmark.y for landmark in hand_landmarks.landmark]
             
             # 检测左右滑动手势
-            slide_distance = max(x_coords) - min(x_coords)
+            slide_distance_x = max(x_coords) - min(x_coords)
             current_time = time.time()
 
-            if slide_distance > SLIDE_THRESHOLD:
+            if slide_distance_x > SLIDE_THRESHOLD_X:
                 if x_coords[0] < x_coords[-1]:  # 从左向右滑动
                     direction = "right"
                 else:  # 从右向左滑动
                     direction = "left"
 
-                if last_direction == direction and current_time - last_slide_time < 1:  # 确保手势在1秒内完成
-                    slide_count += 1
+                if last_direction == direction and current_time - last_slide_time < GESTURE_INTERVAL:  # 确保手势在最小间隔时间内完成
+                    slide_count_x += 1
                 else:
-                    slide_count = 1  # 重置计数器
+                    slide_count_x = 1  # 重置计数器
 
                 last_direction = direction
                 last_slide_time = current_time
 
-                if slide_count >= STABILITY_FRAMES:  # 确保手势稳定检测到多帧
+                if slide_count_x >= STABILITY_FRAMES:  # 确保手势稳定检测到多帧
                     if direction == "right":
                         print("Swipe Right Detected")
                         if ws is not None:  # 检查WebSocket连接是否已建立
@@ -100,7 +103,55 @@ while cap.isOpened():
                         if ws is not None:  # 检查WebSocket连接是否已建立
                             send_message(ws, "previous_tab")
                     
-                    slide_count = 0  # 重置计数器
+                    slide_count_x = 0  # 重置计数器
+
+            # 检测向上滑动手势
+            index_finger_tip = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP]
+            index_finger_base = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_MCP]
+
+            current_y = index_finger_tip.y
+            base_y = index_finger_base.y
+
+            # 僅當垂直距離大於閾值且水平距離小於滑動閾值時，才檢測向上滑動手勢
+            if (base_y - current_y) > SLIDE_THRESHOLD_Y and slide_distance_x < SLIDE_THRESHOLD_X:
+                if current_time - last_slide_time < GESTURE_INTERVAL:  # 确保手势在最小间隔时间内完成
+                    slide_count_y += 1
+                else:
+                    slide_count_y = 1  # 重置计数器
+
+                last_slide_time = current_time
+
+                if slide_count_y >= STABILITY_FRAMES:  # 确保手势稳定检测到多帧
+                    print("Swipe Up Detected")
+                    if ws is not None:  # 检查WebSocket连接是否已建立
+                        send_message(ws, "close_tab")
+                    
+                    slide_count_y = 0  # 重置计数器
+
+            # 檢測掌心朝向手勢
+            palm_facing_camera = hand_landmarks.landmark[mp_hands.HandLandmark.PINKY_TIP].z < hand_landmarks.landmark[mp_hands.HandLandmark.THUMB_TIP].z
+
+            if palm_facing_camera:
+                if current_time - last_slide_time > GESTURE_INTERVAL:
+                    print("Palm Facing Camera - Switch to Left Tab")
+                    if ws is not None:
+                        send_message(ws, "previous_tab")
+                    last_slide_time = current_time
+            else:
+                if current_time - last_slide_time > GESTURE_INTERVAL:
+                    print("Palm Facing Away from Camera - Switch to Right Tab")
+                    if ws is not None:
+                        send_message(ws, "next_tab")
+                    last_slide_time = current_time
+
+            # 檢測單指向上手勢
+            extended_fingers = [hand_landmarks.landmark[i].y < hand_landmarks.landmark[i - 2].y for i in [mp_hands.HandLandmark.THUMB_TIP, mp_hands.HandLandmark.INDEX_FINGER_TIP, mp_hands.HandLandmark.MIDDLE_FINGER_TIP, mp_hands.HandLandmark.RING_FINGER_TIP, mp_hands.HandLandmark.PINKY_TIP]]
+            if extended_fingers.count(True) == 1 and extended_fingers[1]:  # 只有食指伸直
+                if current_time - last_slide_time > GESTURE_INTERVAL:
+                    print("One Finger Up - Close Tab")
+                    if ws is not None:
+                        send_message(ws, "close_tab")
+                    last_slide_time = current_time
 
     cv2.imshow('Hand Gesture Detection', frame)
 
@@ -109,3 +160,4 @@ while cap.isOpened():
 
 cap.release()
 cv2.destroyAllWindows()
+
