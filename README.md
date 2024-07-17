@@ -45,7 +45,9 @@ hot from 2024-07-10 09-33-40](https://github.com/StanleyChueh/Gesture_Tab_Contro
 
 DEMO:
 
-![Untitled ‑ Made with FlexClip (7)](https://github.com/StanleyChueh/Gesture_Tab_Control/assets/153347369/d5095b76-5b2d-4711-96ed-55a6c00d1331)
+![Untitled ‑ Made with FlexClip (13)](https://github.com/user-attachments/assets/94db58b0-c1a5-4ce0-b5fb-809f7fad3f02)
+
+
 
 ## Support
 🤝 Please create an issue on this GitHub for any questions. This allows other people with the same question to find your answer. 🤝
